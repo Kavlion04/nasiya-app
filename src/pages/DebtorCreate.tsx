@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Star, ImageIcon } from 'lucide-react';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
+import { createClient } from '@/services/userApi';
 
 const DebtorCreate = () => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const DebtorCreate = () => {
     setPhoneNumbers(updatedPhones);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name) {
       toast({
         variant: "destructive",
@@ -45,12 +45,29 @@ const DebtorCreate = () => {
       return;
     }
 
-    // Instead of an actual API call, we'll just move to the success step
-    setStep(3);
-
-    // In real implementation, you would call the API here:
-    // const newDebtor = { name, phoneNumbers, address, notes, images };
-    // await debtors.create(newDebtor);
+    try {
+      const newDebtor = {
+        full_name: name,
+        address,
+        description: notes,
+        store: '', // Add store if needed
+        phone_numbers: phoneNumbers,
+        images: images.map((image) => ({ image })),
+      };
+      await createClient(newDebtor);
+      toast({
+        variant: "default",
+        title: "Mijoz yaratildi",
+        description: "Mijoz muvaffaqiyatli yaratildi",
+      });
+      navigate('/debtors');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Xatolik yuz berdi",
+        description: "Mijozni yaratishda xatolik yuz berdi",
+      });
+    }
   };
 
   const renderStep1 = () => (

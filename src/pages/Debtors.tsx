@@ -1,123 +1,117 @@
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import { Search, User, Star, Plus, Home, CalendarDays, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { formatUZCurrency } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, User, Home, CalendarDays, Settings, Plus, Star } from 'lucide-react';
-import { debtors } from '@/services/api';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { formatUZCurrency } from '@/lib/utils';
-import { useDebounce } from '@/hooks/use-debounce';
+const API_URL = "https://nasiya.takedaservice.uz/api";
 
-interface Debtor {
+interface PhoneNumber {
   id: string;
-  name: string;
-  phone: string;
-  totalDebt: number;
-  favorite?: boolean;
+  phone_number: string;
+  created_at: string;
+  updated_at: string;
 }
 
-const Debtors = () => {
+interface Debt {
+  id: string;
+  debt_date: string;
+  debt_period: number;
+  debt_sum: number;
+  description: string;
+  debtor: string;
+}
+
+interface Client {
+  id: string;
+  full_name: string;
+  address: string;
+  description: string;
+  store: string;
+  phone_numbers: PhoneNumber[];
+  total_debt?: number;
+}
+
+const Clients = () => {
   const isMobile = useIsMobile();
-  const [debtorsList, setDebtorsList] = useState<Debtor[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 500);
-  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const fetchDebtors = async () => {
+  const { data: clientsData, isLoading: isClientsLoading } = useQuery({
+    queryKey: ["clients"],
+    queryFn: async () => {
+      const accessToken = localStorage.getItem('accessToken');
       try {
-        setIsLoading(true);
-        const data = await debtors.getAll();
-        
-        if (!data || data.length === 0) {
-          const fallbackData = [
-            { id: '1', name: 'Anvarjon Soliyjonov', phone: '+998555555555', totalDebt: 14786000, favorite: true },
-            { id: '2', name: 'Farida Karimova', phone: '+998555555556', totalDebt: 9450000 },
-            { id: '3', name: 'Otabek Tohirov', phone: '+998555555557', totalDebt: 7825000 },
-            { id: '4', name: 'Avazbek Jahongirov', phone: '+998555555558', totalDebt: 12550000 },
-            { id: '5', name: 'Nodira Azimova', phone: '+998555555559', totalDebt: 5320000 },
-          ];
-          setDebtorsList(fallbackData);
-          
-          const initialFavorites = new Set(
-            fallbackData.filter(d => d.favorite).map(d => d.id)
-          );
-          setFavoriteIds(initialFavorites);
-        } else {
-          setDebtorsList(data);
-          
-          const initialFavorites: Set<string> = new Set(
-            data.filter((d: Debtor) => d.favorite).map((d: Debtor) => d.id)
-          );
-          setFavoriteIds(initialFavorites);
-        }
-      } catch (error) {
-        console.error('Error fetching debtors:', error);
-        const fallbackData = [
-          { id: '1', name: 'Anvarjon Soliyjonov', phone: '+998555555555', totalDebt: 14786000, favorite: true },
-          { id: '2', name: 'Farida Karimova', phone: '+998555555556', totalDebt: 9450000 },
-          { id: '3', name: 'Otabek Tohirov', phone: '+998555555557', totalDebt: 7825000 },
-          { id: '4', name: 'Avazbek Jahongirov', phone: '+998555555558', totalDebt: 12550000 },
-          { id: '5', name: 'Nodira Azimova', phone: '+998555555559', totalDebt: 5320000 },
-        ];
-        setDebtorsList(fallbackData);
-        
-        const initialFavorites = new Set(
-          fallbackData.filter(d => d.favorite).map(d => d.id)
-        );
-        setFavoriteIds(initialFavorites);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDebtors();
-  }, []);
-
-  useEffect(() => {
-    const handleSearch = async () => {
-      if (!debouncedSearch.trim()) {
-        try {
-          const data = await debtors.getAll();
-          if (data && data.length > 0) {
-            setDebtorsList(data);
+        const response = await axios.get(`${API_URL}/debtor`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            
           }
-        } catch (error) {
-          console.error('Error fetching all debtors:', error);
-        }
-        return;
-      }
-      
-      try {
-        setIsLoading(true);
-        const data = await debtors.search(debouncedSearch);
-        if (data && data.length > 0) {
-          setDebtorsList(data);
-        } else {
-          const fallbackSearch = debtorsList.filter(debtor => 
-            debtor.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            debtor.phone.includes(debouncedSearch)
-          );
-          setDebtorsList(fallbackSearch);
-        }
+        });
+        return response.data;
       } catch (error) {
-        console.error('Error searching debtors:', error);
-        const fallbackSearch = debtorsList.filter(debtor => 
-          debtor.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-          debtor.phone.includes(debouncedSearch)
-        );
-        setDebtorsList(fallbackSearch);
-      } finally {
-        setIsLoading(false);
+        console.error("Error fetching clients:", error);
+        return { data: [] };
       }
-    };
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0
+  });
 
-    if (debouncedSearch) {
-      handleSearch();
-    }
-  }, [debouncedSearch]);
+  const { data: debtsData, isLoading: isDebtsLoading } = useQuery({
+    queryKey: ["debts"],
+    queryFn: async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      try {
+        const response = await axios.get(`${API_URL}/debts`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            
+          }
+        });
+        return response.data;
+      } catch (error) {
+        console.error("Error fetching debts:", error);
+        return { data: [] };
+      }
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0
+  });
+
+  const sortedClients = useMemo(() => {
+    const clientsList: Client[] = Array.isArray(clientsData?.data) ? clientsData.data : [];
+    const debts: Debt[] = Array.isArray(debtsData?.data) ? debtsData.data : [];
+    
+    const clientsWithDebts = clientsList.map(client => {
+      const clientDebts = debts.filter(debt => debt.debtor === client.id);
+      const totalDebt = clientDebts.reduce((sum, debt) => sum + (debt.debt_sum || 0), 0);
+      return {
+        ...client,
+        total_debt: totalDebt
+      };
+    });
+
+    const uniqueClients = clientsWithDebts.filter((client, index, self) => 
+      index === self.findIndex((c) => c.id === client.id)
+    );
+
+    return [...uniqueClients].sort((a, b) => {
+      if (favoriteIds.has(a.id) && !favoriteIds.has(b.id)) return -1;
+      if (!favoriteIds.has(a.id) && favoriteIds.has(b.id)) return 1;
+      return (b.total_debt || 0) - (a.total_debt || 0);
+    });
+  }, [clientsData?.data, debtsData?.data, favoriteIds]);
+
+  const totalDebt = useMemo(() => {
+    return sortedClients.reduce((sum, client) => sum + (client.total_debt || 0), 0);
+  }, [sortedClients]);
+
+  const isLoading = isClientsLoading || isDebtsLoading;
 
   const toggleFavorite = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -132,22 +126,7 @@ const Debtors = () => {
       }
       return newFavorites;
     });
-    
-   
   };
-
-  const sortedDebtors = useMemo(() => {
-    return [...debtorsList].sort((a, b) => {
-      const aFav = favoriteIds.has(a.id) ? 1 : 0;
-      const bFav = favoriteIds.has(b.id) ? 1 : 0;
-      
-      if (bFav !== aFav) {
-        return bFav - aFav; 
-      }
-      
-      return a.name.localeCompare(b.name);
-    });
-  }, [debtorsList, favoriteIds]);
 
   return (
     <div className={`flex flex-col h-full bg-gray-50 ${!isMobile ? 'w-full max-w-none' : ''}`}>
@@ -160,10 +139,7 @@ const Debtors = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Search 
-            size={18} 
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
-          />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
       </div>
 
@@ -172,7 +148,7 @@ const Debtors = () => {
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-blue"></div>
           </div>
-        ) : sortedDebtors.length === 0 ? (
+        ) : sortedClients.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <User size={28} className="text-gray-400" />
@@ -181,26 +157,15 @@ const Debtors = () => {
             <p className="text-gray-500 text-sm mb-4">
               Boshqa parametrlar bilan qidirishni sinab ko'ring
             </p>
-            <Button 
-              onClick={() => setSearchQuery('')}
-              variant="outline"
-              className="px-6"
-            >
-              Barcha qarzdorlarni ko'rish
+            <Button onClick={() => setSearchQuery("")} variant="outline" className="px-6">
+              Barcha mijozlarni ko'rish
             </Button>
           </div>
         ) : (
           <div className={`space-y-4 ${!isMobile ? '' : ''}`}>
-            {sortedDebtors.map((debtor, index) => (
-              <Link 
-                to={`/debtors/${debtor.id}`} 
-                key={debtor.id}
-                className="block"
-              >
-                <div 
-                  className="glass-card p-4 animate-scale-in" 
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
+            {sortedClients.map((client, index) => (
+              <Link to={`/debtors/${client.id}`} key={client.id || index} className="block">
+                <div className="glass-card p-4 animate-scale-in" style={{ animationDelay: `${index * 0.05}s` }}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mr-3">
@@ -208,26 +173,23 @@ const Debtors = () => {
                       </div>
                       <div>
                         <div className="flex items-center">
-                          <h3 className="font-medium">{debtor.name}</h3>
-                          <button 
-                            onClick={(e) => toggleFavorite(debtor.id, e)}
-                            className="ml-2"
-                          >
-                            <Star 
-                              size={16} 
-                              fill={favoriteIds.has(debtor.id) ? "#FFC107" : "none"} 
-                              color={favoriteIds.has(debtor.id) ? "#FFC107" : "currentColor"} 
+                          <h3 className="font-medium">{client.full_name}</h3>
+                          <button onClick={(e) => toggleFavorite(client.id, e)} className="ml-2">
+                            <Star
+                              size={16}
+                              fill={favoriteIds.has(client.id) ? "#FFC107" : "none"}
+                              color={favoriteIds.has(client.id) ? "#FFC107" : "currentColor"}
                             />
                           </button>
                         </div>
-                        <p className="text-sm text-gray-500">{debtor.phone}</p>
+                        
+                        <p className="text-sm text-gray-600 font-bold">{client.store}</p>
+                        {client.phone_numbers[0] && (
+                          <p className="text-sm text-blue-600">
+                            {client.phone_numbers[0].phone_number}
+                          </p>
+                        )}
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-app-blue">
-                        {formatUZCurrency(debtor.totalDebt)}
-                      </div>
-                      <div className="text-xs text-gray-500">so'm</div>
                     </div>
                   </div>
                 </div>
@@ -237,38 +199,34 @@ const Debtors = () => {
         )}
       </div>
 
-      <div className="sticky bottom-20 left-40 ">
-        <Link 
-          to="/debtors/add" 
-          className="w-48 h-14 bg-app-blue rounded-full flex items-center justify-center text-white shadow-lg"
-        >
+      <div className="sticky bottom-20 left-40">
+        <Link to="/debtors/add" className="w-48 h-14 bg-app-blue rounded-full flex items-center justify-center text-white shadow-lg">
           <Plus size={24} />
           <p>Qarzdor qo'shish</p>
         </Link>
       </div>
 
-      { (
-        <div className="grid grid-cols-4 mb-10 border-t border-gray-200 bg-white">
-          <Link to="/" className="flex flex-col items-center py-3 text-gray-500">
-            <Home size={20} />
-            <span className="text-xs mt-1">Asosiy</span>
-          </Link>
-          <Link to="/debtors" className="flex flex-col items-center py-3 text-app-blue">
-            <User size={20} />
-            <span className="text-xs mt-1">Qarzdorlar</span>
-          </Link>
-          <Link to="/calendar" className="flex flex-col items-center py-3 text-gray-500">
-            <CalendarDays size={20} />
-            <span className="text-xs mt-1">Kalendar</span>
-          </Link>
-          <Link to="/settings" className="flex flex-col items-center py-3 text-gray-500">
-            <Settings size={20} />
-            <span className="text-xs mt-1">Sozlamalar</span>
-          </Link>
-        </div>
-      )}
+      <div className="grid grid-cols-4 mb-10 border-t border-gray-200 bg-white">
+        <Link to="/" className="flex flex-col items-center py-3 text-gray-500">
+          <Home size={20} />
+          <span className="text-xs mt-1">Asosiy</span>
+          
+        </Link>
+        <Link to="/debtors" className="flex flex-col items-center py-3 text-app-blue">
+          <User size={20} />
+          <span className="text-xs mt-1">Qarzdorlar</span>
+        </Link>
+        <Link to="/calendar" className="flex flex-col items-center py-3 text-gray-500">
+          <CalendarDays size={20} />
+          <span className="text-xs mt-1">Kalendar</span>
+        </Link>
+        <Link to="/settings" className="flex flex-col items-center py-3 text-gray-500">
+          <Settings size={20} />
+          <span className="text-xs mt-1">Sozlamalar</span>
+        </Link>
+      </div>
     </div>
   );
 };
 
-export default Debtors;
+export default Clients;

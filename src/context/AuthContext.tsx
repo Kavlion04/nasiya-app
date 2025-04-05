@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
+import { loginUser } from '../services/loginApi';
 
 type User = {
   id: string;
@@ -65,31 +66,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, hashed_password: string) => {
     try {
       setIsLoading(true);
-      if (username === 'admin' && password === '1111') {
-        const userData = {
-          id: '1',
-          username: 'admin',
-          role: 'admin',
-          name: 'Admin User'
-        };
-        
-        localStorage.setItem('accessToken', 'mock-token-for-admin');
-        localStorage.setItem('refreshToken', 'mock-refresh-token');
-        
-        setUser(userData);
-        setIsAuthenticated(true);
-        return true;
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid username or password",
-          variant: "destructive",
-        });
-        return false;
-      }
+      const response = await loginUser({ login: username, hashed_password: hashed_password });
+      const userData = response.user;
+      setUser(userData);
+      setIsAuthenticated(true);
+      return true;
     } catch (error) {
       toast({
         title: "Login failed",

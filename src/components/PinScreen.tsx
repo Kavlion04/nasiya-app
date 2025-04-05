@@ -37,7 +37,6 @@ const PinScreen = () => {
       const newPin = pin + num;
       setPin(newPin);
       
-      // If pin is complete, validate it
       if (newPin.length === 4) {
         const success = verifyPin(newPin);
         if (!success) {

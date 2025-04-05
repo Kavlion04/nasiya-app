@@ -1,12 +1,15 @@
 
 import axios from 'axios';
 
-const API_URL = 'https://nasiya.takedaservice.uz';
+const API_URL = 'https://nasiya.takedaservice.uz/api';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+    'Cache-Control': 'no-cache'
   },
 });
 
@@ -67,7 +70,7 @@ export const auth = {
 
 export const debtors = {
   getAll: async () => {
-    const response = await api.get('/api/debtor');
+    const response = await api.get('/debtor');
     return response.data;
   },
   search: async (query: string) => {

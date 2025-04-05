@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
@@ -24,26 +23,11 @@ const LoginScreen = () => {
     setError('');
     
     try {
-      // Check for hardcoded credentials
-      if (username === 'admin' && password === '1111') {
-        // Hardcoded login success
-        const mockUserData = {
-          id: '1',
-          username: 'admin',
-          role: 'admin',
-          name: 'Admin User'
-        };
-        
-        // Store a mock token
-        localStorage.setItem('accessToken', 'mock-token-for-admin');
-        localStorage.setItem('refreshToken', 'mock-refresh-token');
-        
-        // Call login with successful result
-        await login(username, password);
-        
+      const success = await login(username, password);
+      if (success) {
         toast({
           title: "Muvaffaqiyatli kirish",
-          description: "Xush kelibsiz, admin!",
+          description: "Xush kelibsiz!",
         });
       } else {
         setError('Foydalanuvchi nomi yoki parol noto\'g\'ri');
