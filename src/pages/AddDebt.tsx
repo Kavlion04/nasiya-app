@@ -1,229 +1,330 @@
-import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MoreVertical } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import axios from "axios";
-import { format } from "date-fns";
+import dayjs from "dayjs";
 
 const API_URL = "https://nasiya.takedaservice.uz/api";
 
+interface ImagePreview {
+  file: File;
+  preview: string;
+  url?: string;
+}
+
 interface DebtFormData {
-  debt_date: string;
+  next_payment_date: string;
   debt_period: number;
-  debt_sum: number;
+  debt_sum: string;
+  total_debt_sum: string;
   description: string;
 }
 
 const AddDebt = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { id } = useParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<ImagePreview[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<DebtFormData>({
-    debt_date: format(new Date(), "yyyy-MM-dd"),
-    debt_period: 12,
-    debt_sum: 0,
+    next_payment_date: dayjs().format("YYYY-MM-DD"),
+    debt_period: 1,
+    debt_sum: "",
+    total_debt_sum: "",
     description: "",
   });
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.debt_sum) {
+      toast({
+        variant: "destructive",
+        title: "Xato",
+        description: "Nasiya summasini kiriting",
+      });
+      return;
+    }
+
+    if (selectedImages.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Xato",
+        description: "Kamida bitta rasm yuklang",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       const accessToken = localStorage.getItem("accessToken");
 
-      // Create debt
-      const debtResponse = await axios.post(
+      // Create debt with image URLs
+      const response = await axios.post(
         `${API_URL}/debts`,
         {
-          ...formData,
+          next_payment_date: formData.next_payment_date,
+          debt_period: formData.debt_period,
+          debt_sum: formData.debt_sum,
+          total_debt_sum: formData.total_debt_sum || formData.debt_sum,
+          description: formData.description || "string",
+          images: [
+            {
+              image:
+                "https://static.vecteezy.com/vite/assets/photo-masthead-375-BoK_p8LG.webp",
+            },
+            {
+              image:
+                "https://static.vecteezy.com/vite/assets/photo-masthead-375-BoK_p8LG.webp",
+            },
+          ],
           debtor: id,
+          debt_status: "active",
         },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
           },
         }
       );
 
-      // Upload images if any
-      if (selectedImages.length > 0) {
-        const formData = new FormData();
-        selectedImages.forEach((image) => {
-          formData.append("images", image);
+      if (response.data) {
+        toast({
+          title: "Muvaffaqiyatli",
+          description: "Nasiya muvaffaqiyatli qo'shildi",
         });
-
-        await axios.post(
-          `${API_URL}/debts/${debtResponse.data.id}/images`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        navigate(`/debtors/${id}`);
       }
-
-      toast({
-        title: "Muvaffaqiyatli",
-        description: "Nasiya qo'shildi",
-      });
-      navigate(-1);
-    } catch (error) {
-      console.error("Error adding debt:", error);
+    } catch (error: any) {
+      console.error("Error creating debt:", error);
       toast({
         variant: "destructive",
         title: "Xato",
-        description: "Nasiya qo'shishda xatolik yuz berdi",
+        description:
+          error.response?.data?.message ||
+          error.message ||
+          "Nasiyani qo'shib bo'lmadi",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setSelectedImages((prev) => [...prev, ...files]);
-
-    // Create preview URLs
-    const newImageUrls = files.map((file) => URL.createObjectURL(file));
-    setImageUrls((prev) => [...prev, ...newImageUrls]);
+  const handleImageSelect = async (index: number) => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.dataset.index = index.toString();
+      fileInputRef.current.click();
+    }
   };
 
-  const handleInputChange = (
-    field: keyof DebtFormData,
-    value: string | number
-  ) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const index = parseInt(e.target.dataset.index || "0");
+
+    if (file) {
+      try {
+        const preview = URL.createObjectURL(file);
+        setSelectedImages((prev) => {
+          const newImages = [...prev];
+          newImages[index] = {
+            file,
+            preview,
+          };
+          return newImages;
+        });
+
+        toast({
+          title: "Muvaffaqiyatli",
+          description: "Rasm qo'shildi",
+        });
+      } catch (error: any) {
+        console.error("Error handling image:", error);
+        toast({
+          variant: "destructive",
+          title: "Xato",
+          description: "Rasmni qayta ishlashda xatolik yuz berdi",
+        });
+      }
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setSelectedImages((prev) => {
+      const newImages = [...prev];
+      if (newImages[index]?.preview) {
+        URL.revokeObjectURL(newImages[index].preview);
+      }
+      delete newImages[index];
+      return [...newImages];
+    });
+  };
+
+  const handleSetToday = () => {
     setFormData((prev) => ({
       ...prev,
-      [field]: value,
+      next_payment_date: dayjs().format("YYYY-MM-DD"),
     }));
   };
 
+  const renderImageUpload = () => (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium">Rasm biriktirish</label>
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleImageChange}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        {[0, 1].map((index) => (
+          <div key={index} className="relative">
+            {selectedImages[index] ? (
+              <div className="relative border rounded-md overflow-hidden bg-gray-50">
+                <img
+                  src={selectedImages[index].preview}
+                  alt={`Selected ${index + 1}`}
+                  className="w-full h-[120px] object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute top-1 right-1 p-1 bg-white/80 hover:bg-white text-gray-600 rounded-full"
+                >
+                  <X size={14} />
+                </button>
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">
+                  Rasm {index + 1}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleImageSelect(index)}
+                className="border rounded-md h-[120px] w-full flex flex-col items-center justify-center gap-1 bg-gray-50"
+              >
+                <ImageIcon size={24} className="text-gray-400" />
+                <span className="text-xs text-gray-500">Rasm {index + 1}</span>
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="p-4 bg-white border-b flex items-center justify-between">
+    <div className="flex flex-col h-full bg-white">
+      <div className="p-4 bg-white border-b">
         <div className="flex items-center">
           <button onClick={() => navigate(-1)} className="mr-4">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-xl font-semibold">Batafsil</h1>
+          <h1 className="text-xl font-medium">Nasiya yaratish</h1>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <MoreVertical size={20} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="cursor-pointer text-red-500">
-              O'chirish
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg p-4">
-            <label className="block text-sm text-gray-500">Sana</label>
+      <div className="flex-1 overflow-auto">
+        <div className="p-4 space-y-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">
+              Summa miqdori <span className="text-red-500">*</span>
+            </label>
             <Input
-              type="date"
-              value={formData.debt_date}
-              onChange={(e) => handleInputChange("debt_date", e.target.value)}
+              type="text"
+              value={formData.debt_sum}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  debt_sum: e.target.value.replace(/\D/g, ""),
+                  total_debt_sum: e.target.value.replace(/\D/g, ""),
+                }))
+              }
+              placeholder="5845000"
               required
+              className="bg-gray-50"
             />
           </div>
-          <div className="bg-white rounded-lg p-4">
-            <label className="block text-sm text-gray-500">Soat</label>
-            <Input type="time" value={format(new Date(), "HH:mm")} disabled />
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm text-gray-500">Muddat</label>
-          <Input
-            type="number"
-            value={formData.debt_period}
-            onChange={(e) =>
-              handleInputChange("debt_period", parseInt(e.target.value))
-            }
-            min={1}
-            placeholder="12 oy"
-            required
-          />
-        </div>
-
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm text-gray-500">Summa miqdori</label>
-          <Input
-            type="number"
-            value={formData.debt_sum}
-            onChange={(e) =>
-              handleInputChange("debt_sum", parseFloat(e.target.value))
-            }
-            min={0}
-            placeholder="5 845 000"
-            required
-          />
-          <span className="text-sm text-gray-500 mt-1">so'm</span>
-        </div>
-
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm text-gray-500">Elatma</label>
-          <Input
-            value={formData.description}
-            onChange={(e) => handleInputChange("description", e.target.value)}
-            placeholder="Iphone 14 Pro, boshlangi'ch to'lovi bor"
-          />
-        </div>
-
-        <div className="bg-white rounded-lg p-4">
-          <label className="block text-sm text-gray-500 mb-2">
-            Rasm biriktirish
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {imageUrls.map((url, index) => (
-              <img
-                key={index}
-                src={url}
-                alt={`Preview ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg"
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Sana</label>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={formData.next_payment_date}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    next_payment_date: e.target.value,
+                  }))
+                }
+                className="bg-gray-50 flex-1"
               />
-            ))}
+              <Button
+                type="button"
+                onClick={handleSetToday}
+                variant="outline"
+                className="whitespace-nowrap"
+              >
+                Bugun
+              </Button>
+            </div>
           </div>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageChange}
-            className="hidden"
-            id="image-upload"
-          />
-          <label
-            htmlFor="image-upload"
-            className="mt-2 block w-full py-2 text-center text-blue-600 cursor-pointer"
-          >
-            + Rasm qo'shish
-          </label>
-        </div>
 
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Muddat</label>
+            <select
+              value={formData.debt_period}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  debt_period: parseInt(e.target.value),
+                }))
+              }
+              className="w-full bg-gray-50 border rounded-md px-3 py-2"
+            >
+              <option value={1}>1 oy</option>
+              <option value={2}>2 oy</option>
+              <option value={3}>3 oy</option>
+              <option value={4}>4 oy</option>
+              <option value={5}>5 oy</option>
+              <option value={6}>6 oy</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Elatma</label>
+            <Input
+              value={formData.description}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="Elatma qo'shish..."
+              className="bg-gray-50"
+            />
+          </div>
+
+          {renderImageUpload()}
+        </div>
+      </div>
+
+      <div className="p-4">
         <Button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-4 rounded-lg"
+          onClick={handleSubmit}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-md"
           disabled={isLoading}
         >
-          Nasiyani so'ndirish
+          {isLoading ? "Yuklanmoqda..." : "Saqlash"}
         </Button>
-      </form>
+      </div>
     </div>
   );
 };

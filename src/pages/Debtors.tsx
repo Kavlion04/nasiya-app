@@ -164,15 +164,10 @@ const Clients = () => {
             placeholder="Qidirish"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-72"
+            className="w-[1400px]"
           />
         </div>
-        <Button
-          onClick={() => navigate("/debtors/create")}
-          className="bg-blue-600 text-white"
-        >
-          + Nasiya qo'shish
-        </Button>
+       
       </div>
 
       <div className={`flex-1 p-4 overflow-auto ${!isMobile ? "px-8" : ""}`}>

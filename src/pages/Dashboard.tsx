@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { User, Plus, Home, CalendarDays, Settings } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { User, Plus, Home, CalendarDays, Settings } from "lucide-react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { useAuth } from '@/context/AuthContext';
-import { stores } from '@/services/api';
+import { useAuth } from "@/context/AuthContext";
+import { stores } from "@/services/api";
+import { Card } from "@/components/ui/card";
+import { formatUZCurrency } from "@/lib/utils";
+import axios from "axios";
 
 interface DebtStats {
   totalDebt: number;
@@ -11,53 +14,134 @@ interface DebtStats {
   remaining: number;
 }
 
+const API_URL = "https://nasiya.takedaservice.uz/api";
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [stats, setStats] = useState<DebtStats>({
     totalDebt: 0,
     monthlyDebt: 0,
-    remaining: 0
+    remaining: 0,
   });
+  const [debtorsCount, setDebtorsCount] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const [profile, setProfile] = useState({
-    username: 'nickname',
+    username: "nickname",
     avatar: null,
   });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await stores.getStatistics();
-        setStats({
-          totalDebt: data.totalDebt || 135214000,
-          monthlyDebt: data.monthlyDebt || 25,
-          remaining: data.remaining || 101
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        setStats({
-          totalDebt: 135214000,
-          monthlyDebt: 25,
-          remaining: 101
-        });
-      }
-    };
+  const [totalDebtSum, setTotalDebtSum] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
+  const fetchStats = async () => {
+    try {
+      const data = await stores.getStatistics();
+      setStats({
+        totalDebt: data.totalDebt || 135214000,
+        monthlyDebt: data.monthlyDebt || 25,
+        remaining: data.remaining || 101,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      setStats({
+        totalDebt: 135214000,
+        monthlyDebt: 25,
+        remaining: 101,
+      });
+    }
+  };
+
+  const fetchTotalDebts = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axios.get(`${API_URL}/debts`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          skip: 0,
+          take: 1000, // Katta qiymat olamiz, barcha nasiyalarni olish uchun
+        },
+      });
+
+      // Barcha nasiyalar summasini hisoblash
+      const total = response.data.data.reduce(
+        (sum: number, debt: any) => sum + Number(debt.debt_sum),
+        0
+      );
+      setTotalDebtSum(total);
+    } catch (error) {
+      console.error("Error fetching total debts:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDebtorsCount = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axios.get(`${API_URL}/debtor`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          skip: 0,
+          take: 100,
+        },
+      });
+
+      // API dan kelgan ma'lumotlar uzunligini olish
+      const debtorsLength = response.data.data.length;
+      setDebtorsCount(debtorsLength);
+    } catch (error) {
+      console.error("Error fetching debtors count:", error);
+    }
+  };
+
+  const fetchWalletBalance = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axios.get(`${API_URL}/wallet`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      // API dan kelgan wallet balansini set qilish
+      setWalletBalance(response.data.balance || 0);
+    } catch (error) {
+      console.error("Error fetching wallet balance:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchStats();
+    fetchTotalDebts();
+    fetchDebtorsCount();
+    fetchWalletBalance();
+
+    // Har 30 sekundda yangilab turish
+    const interval = setInterval(() => {
+      fetchDebtorsCount();
+      fetchWalletBalance();
+    }, 30000);
 
     // LocalStorage'dan foydalanuvchi ma'lumotlarini olish
-    const storedUser = JSON.parse(localStorage.getItem('userData'));
+    const storedUser = JSON.parse(localStorage.getItem("userData"));
     if (storedUser) {
       setProfile({
-        username: storedUser.username || 'nickname',
+        username: storedUser.username || "nickname",
         avatar: storedUser.avatar || null,
       });
     }
+
+    return () => clearInterval(interval);
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('uz-UZ').format(amount);
+    return new Intl.NumberFormat("uz-UZ").format(amount);
   };
 
   return (
@@ -67,7 +151,11 @@ const Dashboard = () => {
           <div className="flex items-center">
             <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3 overflow-hidden">
               {profile.avatar ? (
-                <img src={profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                <img
+                  src={profile.avatar}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <User size={20} />
               )}
@@ -88,14 +176,19 @@ const Dashboard = () => {
         <div className="glass-card p-4 mb-6 animate-scale-in bg-[#30AF49]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-300">Umumiy qarzdorlik</span>
-            <span className="text-xs text-white bg-app-green px-2 py-1 rounded-full">Shu oy</span>
+            <span className="text-xs text-white bg-app-green px-2 py-1 rounded-full">
+              Shu oy
+            </span>
           </div>
           <div className="flex items-center">
             <div className="text-xl text-white font-bold mb-1">
-              {isVisible ? formatCurrency(stats.totalDebt) : "************"}{" "}
+              {isVisible ? formatCurrency(totalDebtSum) : "************"}{" "}
               <span className="text-sm font-normal">so'm</span>
             </div>
-            <div onClick={() => setIsVisible(!isVisible)} className="ml-10 pt-1 cursor-pointer">
+            <div
+              onClick={() => setIsVisible(!isVisible)}
+              className="ml-10 pt-1 cursor-pointer"
+            >
               {isVisible ? (
                 <FaEyeSlash size={20} className="text-white" />
               ) : (
@@ -106,30 +199,46 @@ const Dashboard = () => {
           <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mt-2">
             <div
               className="h-full bg-app-green rounded-full"
-              style={{ width: `${Math.min(stats.monthlyDebt / 100 * 100, 100)}%` }}
+              style={{
+                width: `${Math.min((stats.monthlyDebt / 100) * 100, 100)}%`,
+              }}
             ></div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="glass-card p-4 animate-scale-in" style={{ animationDelay: '0.1s' }}>
+          <div
+            className="glass-card p-4 animate-scale-in"
+            style={{ animationDelay: "0.1s" }}
+          >
             <h3 className="text-sm text-gray-500 mb-2">Kunlik qarzdorlik</h3>
-            <div className="text-2xl text-red-600 font-semibold">{stats.monthlyDebt}</div>
+            <div className="text-2xl text-red-600 font-semibold">
+              {stats.monthlyDebt}
+            </div>
           </div>
-          <div className="glass-card p-4 animate-scale-in" style={{ animationDelay: '0.2s' }}>
+          <div
+            className="glass-card p-4 animate-scale-in"
+            style={{ animationDelay: "0.2s" }}
+          >
             <h3 className="text-sm text-gray-500 mb-2">Mijoslar soni</h3>
-            <div className="text-2xl text-green-500 font-semibold">{stats.remaining}</div>
+            <div className="text-2xl text-green-500 font-semibold">
+              {debtorsCount}
+            </div>
           </div>
         </div>
 
         <h2 className="text-lg font-semibold mb-3">Hamyonimgiz</h2>
 
-        <div className="glass-card p-4 mb-4 animate-scale-in" style={{ animationDelay: '0.3s' }}>
+        <div
+          className="glass-card p-4 mb-4 animate-scale-in"
+          style={{ animationDelay: "0.3s" }}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm mb-1">Mablag'ingiz</p>
               <h3 className="text-xl font-bold">
-                {stats.totalDebt > 300000 ? 300000 : formatCurrency(stats.totalDebt)} <span className="text-sm font-normal">so'm</span>
+                {formatCurrency(walletBalance)}{" "}
+                <span className="text-sm font-normal">so'm</span>
               </h3>
             </div>
             <button className="w-8 h-8 bg-app-blue rounded-full flex items-center justify-center text-white">
@@ -144,15 +253,24 @@ const Dashboard = () => {
           <Home size={20} />
           <span className="text-xs mt-1">Asosiy</span>
         </Link>
-        <Link to="/debtors" className="flex flex-col items-center py-3 text-gray-500">
+        <Link
+          to="/debtors"
+          className="flex flex-col items-center py-3 text-gray-500"
+        >
           <User size={20} />
           <span className="text-xs mt-1">Qarzdorlar</span>
         </Link>
-        <Link to="/calendar" className="flex flex-col items-center py-3 text-gray-500">
+        <Link
+          to="/calendar"
+          className="flex flex-col items-center py-3 text-gray-500"
+        >
           <CalendarDays size={20} />
           <span className="text-xs mt-1">Kalendar</span>
         </Link>
-        <Link to="/settings" className="flex flex-col items-center py-3 text-gray-500">
+        <Link
+          to="/settings"
+          className="flex flex-col items-center py-3 text-gray-500"
+        >
           <Settings size={20} />
           <span className="text-xs mt-1">Sozlamalar</span>
         </Link>
