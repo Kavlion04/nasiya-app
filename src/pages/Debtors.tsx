@@ -44,11 +44,21 @@ interface Debt {
   paid_sum?: number;
 }
 
-const Clients = () => {
+interface Debtor {
+  id: string;
+  full_name: string;
+  phone_numbers: string[];
+  images: string[];
+  total_debt?: number;
+}
+
+const Debtors = () => {
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [clientDebts, setClientDebts] = useState<{ [key: string]: Debt[] }>({});
+  const [debtors, setDebtors] = useState<Debtor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   const { data: clientsData, isLoading: isClientsLoading } = useQuery({
@@ -71,40 +81,68 @@ const Clients = () => {
     staleTime: 0,
   });
 
-  useEffect(() => {
-    const fetchAllDebts = async () => {
+  const fetchDebtorsWithTotalDebt = async () => {
+    try {
       const accessToken = localStorage.getItem("accessToken");
-      try {
-        const response = await axios.get(`${API_URL}/debts`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          params: {
-            skip: 0,
-            take: 1000, // Adjust this number based on your needs
-          },
-        });
+      // Mijozlarni olish
+      const debtorsResponse = await axios.get(`${API_URL}/debtor`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          skip: 0,
+          take: 100,
+        },
+      });
 
-        // Group debts by debtor ID
-        const debtsMap: { [key: string]: Debt[] } = {};
-        response.data.data.forEach((debt: Debt) => {
-          if (!debtsMap[debt.debtor]) {
-            debtsMap[debt.debtor] = [];
+      // Har bir mijoz uchun nasiyalar summasini olish
+      const debtorsWithTotal = await Promise.all(
+        debtorsResponse.data.data.map(async (debtor: Debtor) => {
+          try {
+            const debtsResponse = await axios.get(`${API_URL}/debts`, {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+              params: {
+                skip: 0,
+                take: 100,
+                debtor_id: debtor.id,
+              },
+            });
+
+            // Mijozning barcha nasiyalari summasini hisoblash
+            const totalDebt = debtsResponse.data.data.reduce(
+              (sum: number, debt: any) => sum + Number(debt.debt_sum),
+              0
+            );
+
+            return {
+              ...debtor,
+              total_debt: totalDebt,
+            };
+          } catch (error) {
+            console.error(
+              `Error fetching debts for debtor ${debtor.id}:`,
+              error
+            );
+            return {
+              ...debtor,
+              total_debt: 0,
+            };
           }
-          debtsMap[debt.debtor].push(debt);
-        });
-        setClientDebts(debtsMap);
-      } catch (error) {
-        console.error("Error fetching debts:", error);
-        toast({
-          variant: "destructive",
-          title: "Xato",
-          description: "Nasiyalarni yuklab bo'lmadi",
-        });
-      }
-    };
+        })
+      );
 
-    fetchAllDebts();
+      setDebtors(debtorsWithTotal);
+    } catch (error) {
+      console.error("Error fetching debtors:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDebtorsWithTotalDebt();
   }, []);
 
   const sortedClients = useMemo(() => {
@@ -167,13 +205,12 @@ const Clients = () => {
             className="w-[1400px]"
           />
         </div>
-       
       </div>
 
       <div className={`flex-1 p-4 overflow-auto ${!isMobile ? "px-8" : ""}`}>
-        {isClientsLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-blue"></div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
           </div>
         ) : sortedClients.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -266,7 +303,7 @@ const Clients = () => {
         )}
       </div>
 
-      <div className="sticky bottom-20 left-40">
+      <div className="fixed bottom-20 right-20">
         <Link
           to="/debtors/add"
           className="w-48 h-14 bg-app-blue rounded-full flex items-center justify-center text-white shadow-lg"
@@ -307,4 +344,4 @@ const Clients = () => {
   );
 };
 
-export default Clients;
+export default Debtors;

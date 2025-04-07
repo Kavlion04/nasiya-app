@@ -13,7 +13,7 @@ import Debtors from "./pages/Debtors";
 import DebtorDetail from "./pages/DebtorDetail";
 import DebtorCreate from "./pages/DebtorCreate";
 import EditDebtor from "./pages/EditDebtor";
-import DebtDetail from "./pages/DebtDetail";
+import DebtDetail from "@/pages/DebtDetail";
 import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -167,6 +167,14 @@ const AppContent = () => {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/debts/:id"
+              element={
+                <ProtectedRoute>
+                  <DebtDetail />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         ) : (
@@ -273,6 +281,14 @@ const AppContent = () => {
                 element={
                   <ProtectedRoute>
                     <DebtorCreate />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/debts/:id"
+                element={
+                  <ProtectedRoute>
+                    <DebtDetail />
                   </ProtectedRoute>
                 }
               />

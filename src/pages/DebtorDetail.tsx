@@ -42,13 +42,11 @@ interface Debtor {
 
 interface Debt {
   id: string;
+  debt_date: string;
+  debt_time: string;
+  debt_period: string;
   debt_sum: string;
-  total_debt_sum: string;
-  next_payment_date: string;
-  debt_period: number;
   description: string;
-  debt_status: string;
-  images: { image: string }[];
 }
 
 const DebtorDetail = () => {
@@ -74,6 +72,7 @@ const DebtorDetail = () => {
         },
       });
       setDebts(response.data.data);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching debts:", error);
       toast({
@@ -115,9 +114,13 @@ const DebtorDetail = () => {
     setIsFavorite(!isFavorite);
   };
 
+  const handleDebtClick = (debtId: string) => {
+    navigate(`/debts/${debtId}`);
+  };
+
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
       </div>
     );
@@ -133,14 +136,14 @@ const DebtorDetail = () => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      <div className="p-4 bg-white border-b flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="p-1">
-            <ArrowLeft size={20} />
+      <div className="bg-white p-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center space-x-4">
+          <button onClick={() => navigate(-1)} className="text-gray-600">
+            <ArrowLeft size={24} />
           </button>
-          <h1 className="text-lg">{debtor.full_name}</h1>
+          <h1 className="text-xl font-semibold">{debtor.full_name}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center space-x-2">
           <button onClick={toggleFavorite}>
             <Star
               size={20}
@@ -149,16 +152,14 @@ const DebtorDetail = () => {
             />
           </button>
           <DropdownMenu>
-            <DropdownMenuTrigger>
-              <button className="p-1">
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 hover:bg-gray-100 rounded-full">
                 <MoreVertical size={20} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="cursor-pointer">
-                Tahrirlash
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer text-red-500">
+              <DropdownMenuItem>Tahrirlash</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600">
                 O'chirish
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -166,79 +167,55 @@ const DebtorDetail = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="p-4 space-y-4">
-          {/* Total Debt Card */}
-          <div className="bg-blue-100 rounded-xl p-4">
-            <div className="text-sm text-gray-600">Umumiy nasiya:</div>
-            <div className="text-xl font-semibold">
-              {formatUZCurrency(
-                debts.reduce((sum, debt) => sum + Number(debt.debt_sum), 0)
-              )}{" "}
-              so'm
-            </div>
+      <div className="flex-1 p-4">
+        {/* Total Debt Card */}
+        <div className="bg-blue-100 rounded-xl p-4 mb-4">
+          <div className="text-sm text-gray-600">Umumiy nasiya:</div>
+          <div className="text-xl font-semibold">
+            {formatUZCurrency(
+              debts.reduce((sum, debt) => sum + Number(debt.debt_sum), 0)
+            )}{" "}
+            so'm
           </div>
+        </div>
 
-          {/* Debts Section */}
-          <div>
-            <h2 className="text-base mb-3">Nasiyalar</h2>
-            <div className="space-y-3">
-              {debts.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Nasiyalar mavjud emas
-                </div>
-              ) : (
-                debts.map((debt) => (
-                  <div key={debt.id} className="bg-white rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="text-sm text-gray-500">
-                        {dayjs(debt.next_payment_date).format(
-                          "MMM D, YYYY HH:mm"
-                        )}
-                      </div>
-                      <div className="text-blue-500 font-medium">
-                        {formatUZCurrency(Number(debt.debt_sum))} so'm
-                      </div>
+        {/* Debts List */}
+        <div>
+          <h2 className="text-base font-medium mb-3">Nasiyalar</h2>
+          <div className="space-y-3">
+            {debts.map((debt) => (
+              <div
+                key={debt.id}
+                onClick={() => handleDebtClick(debt.id)}
+                className="bg-white rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-sm text-gray-500">
+                      {dayjs(debt.debt_date).format("DD.MM.YYYY")}
                     </div>
-                    <div className="text-sm text-gray-500 mb-2">
-                      Keyingi to'lov:{" "}
-                      {dayjs(debt.next_payment_date).format("DD.MM.YYYY")}
+                    <div className="text-sm text-gray-500">
+                      Muddat: {debt.debt_period}
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="text-purple-600 text-sm">
-                        {formatUZCurrency(
-                          Number(debt.total_debt_sum) - Number(debt.debt_sum)
-                        )}{" "}
-                        so'm
+                    {debt.description && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        {debt.description}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {debt.debt_status === "active" ? "Faol" : "Yopilgan"}
-                      </div>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-green-500"
-                        style={{
-                          width: `${
-                            ((Number(debt.total_debt_sum) -
-                              Number(debt.debt_sum)) /
-                              Number(debt.total_debt_sum)) *
-                            100
-                          }%`,
-                        }}
-                      />
-                    </div>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="text-blue-600 font-medium">
+                    {formatUZCurrency(Number(debt.debt_sum))} so'm
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       <button
         onClick={() => navigate(`/debtors/${id}/add-debt`)}
-        className="fixed bottom-[50px] right-0 transform -translate-x-1/2 bg-blue-500 text-white px-6 py-2 rounded-full flex items-center gap-2 shadow-lg"
+        className="fixed bottom-20 right-4 bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center space-x-2"
       >
         <Plus size={20} />
         <span>Qo'shish</span>

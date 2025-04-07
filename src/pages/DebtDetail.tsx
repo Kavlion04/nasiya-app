@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MoreVertical, X } from "lucide-react";
+import { ArrowLeft, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,394 +18,332 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import axios from "axios";
-import { format } from "date-fns";
+import dayjs from "dayjs";
+import { formatUZCurrency } from "@/lib/utils";
 
 const API_URL = "https://nasiya.takedaservice.uz/api";
 
-interface DebtFormData {
+interface Debt {
+  id: string;
+  debt_date: string;
+  debt_time: string;
   debt_period: number;
   debt_sum: string;
   description: string;
-  debt_time: string;
+  images: string[];
 }
 
 const DebtDetail = () => {
-  const { debtorId, debtId } = useParams<{
-    debtorId: string;
-    debtId: string;
-  }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const [debt, setDebt] = useState<Debt | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<DebtFormData>({
-    debt_period: 12,
-    debt_sum: "0",
-    description: "",
-    debt_time: format(new Date(), "HH:mm"),
-  });
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [editedDebt, setEditedDebt] = useState<Debt | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchDebtDetail = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await axios.get(`${API_URL}/debts/${id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const debtData = response.data;
+      if (debtData) {
+        // Format date and time
+        const date = dayjs(debtData.debt_date);
+        debtData.debt_date = date.isValid()
+          ? date.format("YYYY-MM-DD")
+          : dayjs().format("YYYY-MM-DD");
+
+        const time = dayjs(debtData.debt_time, "HH:mm");
+        debtData.debt_time = time.isValid()
+          ? time.format("HH:mm")
+          : dayjs().format("HH:mm");
+
+        // Ensure debt_period is a number
+        debtData.debt_period = Number(debtData.debt_period) || 1;
+
+        // Format debt_sum
+        debtData.debt_sum = debtData.debt_sum || "0";
+      }
+
+      setDebt(debtData);
+      setEditedDebt(debtData);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching debt detail:", error);
+      toast({
+        variant: "destructive",
+        title: "Xato",
+        description: "Nasiya ma'lumotlarini yuklashda xatolik yuz berdi",
+      });
+    }
+  };
 
   useEffect(() => {
-    const fetchDebt = async () => {
-      try {
-        setIsLoading(true);
-        const accessToken = localStorage.getItem("accessToken");
-        const response = await axios.get(`${API_URL}/debts/${debtId}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+    fetchDebtDetail();
+  }, [id]);
 
-        const debtData = response.data.data;
-        const debtDate = new Date(debtData.debt_date);
-
-        setDate(format(debtDate, "yyyy-MM-dd"));
-        setFormData({
-          debt_period: debtData.debt_period,
-          debt_sum: debtData.debt_sum.toString(),
-          description: debtData.description || "",
-          debt_time: format(debtDate, "HH:mm"),
-        });
-
-        if (debtData.images && debtData.images.length > 0) {
-          setImageUrls(debtData.images);
-        }
-      } catch (error) {
-        console.error("Error fetching debt:", error);
-        toast({
-          variant: "destructive",
-          title: "Xato",
-          description: "Ma'lumotlarni yuklab bo'lmadi",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDebt();
-  }, [debtId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (selectedImages.length + imageUrls.length < 1) {
-      toast({
-        variant: "destructive",
-        title: "Xato",
-        description: "Kamida 1 ta rasm kiritish kerak",
-      });
-      return;
-    }
-
-    if (selectedImages.length + imageUrls.length > 2) {
-      toast({
-        variant: "destructive",
-        title: "Xato",
-        description: "2 tadan ortiq rasm kiritib bo'lmaydi",
-      });
-      return;
-    }
+  const handleSave = async () => {
+    if (!editedDebt) return;
 
     try {
-      setIsLoading(true);
       const accessToken = localStorage.getItem("accessToken");
+      const dataToSend = {
+        debt_date: editedDebt.debt_date,
+        debt_period: Number(editedDebt.debt_period),
+        debt_sum: editedDebt.debt_sum,
+        description: editedDebt.description || "",
+      };
 
-      // Update debt
-      await axios.put(
-        `${API_URL}/debts/${debtId}`,
-        {
-          ...formData,
-          debt_sum: parseFloat(formData.debt_sum).toFixed(2),
-          debtor: debtorId,
+      await axios.put(`${API_URL}/debts/${id}`, dataToSend, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      });
 
-      // Upload new images if any
-      if (selectedImages.length > 0) {
-        const formDataImages = new FormData();
-        selectedImages.forEach((image) => {
-          formDataImages.append("image", image);
-        });
-
-        await axios.post(`${API_URL}/images-of-debts`, formDataImages, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "multipart/form-data",
-          },
-        });
-      }
-
+      setDebt(editedDebt);
+      setIsEditing(false);
       toast({
         title: "Muvaffaqiyatli",
         description: "Nasiya ma'lumotlari yangilandi",
       });
-      setIsEditing(false);
-    } catch (error) {
+
+      fetchDebtDetail();
+    } catch (error: any) {
       console.error("Error updating debt:", error);
       toast({
         variant: "destructive",
         title: "Xato",
-        description: "Nasiya ma'lumotlarini yangilab bo'lmadi",
+        description:
+          error.response?.data?.error?.message ||
+          "Nasiyani yangilashda xatolik yuz berdi",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleDelete = async () => {
+    if (!window.confirm("Nasiyani o'chirishni xohlaysizmi?")) return;
 
-    if (files.length + selectedImages.length + imageUrls.length > 2) {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      await axios.delete(`${API_URL}/debts/${id}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      toast({
+        title: "Muvaffaqiyatli",
+        description: "Nasiya o'chirildi",
+      });
+      navigate(-1);
+    } catch (error) {
+      console.error("Error deleting debt:", error);
       toast({
         variant: "destructive",
         title: "Xato",
-        description: "2 tadan ortiq rasm kiritib bo'lmaydi",
+        description: "Nasiyani o'chirishda xatolik yuz berdi",
       });
-      return;
     }
-
-    setSelectedImages((prev) => [...prev, ...files]);
-
-    // Create preview URLs
-    const newImageUrls = files.map((file) => URL.createObjectURL(file));
-    setImageUrls((prev) => [...prev, ...newImageUrls]);
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
-    setImageUrls((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleInputChange = (
-    field: keyof DebtFormData,
-    value: string | number
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-app-blue"></div>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="p-4 bg-white border-b flex items-center justify-between">
-        <div className="flex items-center">
-          <button onClick={() => navigate(-1)} className="mr-4">
-            <ArrowLeft size={20} />
+    <div className="flex flex-col min-h-screen bg-white">
+      {/* Header */}
+      <div className="px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <ArrowLeft size={24} />
           </button>
-          <h1 className="text-xl font-semibold">Batafsil</h1>
+          <h1 className="text-xl">Batafsil</h1>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger>
-            <MoreVertical size={20} />
+          <DropdownMenuTrigger asChild>
+            <button className="hover:bg-gray-100 rounded-full transition-colors">
+              <MoreVertical size={24} />
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              className="cursor-pointer"
               onClick={() => setIsEditing(true)}
+              className="cursor-pointer"
             >
               Tahrirlash
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer text-red-500">
+            <DropdownMenuItem
+              onClick={handleDelete}
+              className="text-red-600 cursor-pointer"
+            >
               O'chirish
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {isEditing ? (
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 p-4 space-y-4 overflow-auto"
-        >
+      {/* Main Content */}
+      <div className="flex-1 px-4">
+        <div className="space-y-6">
+          {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-4">
-              <label className="block text-sm text-gray-500">Sana</label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
-            <div className="bg-white rounded-lg p-4">
-              <label className="block text-sm text-gray-500">Soat</label>
-              <Input
-                type="time"
-                value={formData.debt_time}
-                onChange={(e) => handleInputChange("debt_time", e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-4">
-            <label className="block text-sm text-gray-500">Muddat</label>
-            <Input
-              type="number"
-              value={formData.debt_period}
-              onChange={(e) =>
-                handleInputChange("debt_period", parseInt(e.target.value))
-              }
-              min={1}
-              placeholder="12 oy"
-              required
-            />
-          </div>
-
-          <div className="bg-white rounded-lg p-4">
-            <label className="block text-sm text-gray-500">Summa miqdori</label>
-            <Input
-              type="number"
-              value={formData.debt_sum}
-              onChange={(e) => handleInputChange("debt_sum", e.target.value)}
-              min={0}
-              step="0.01"
-              placeholder="5845000.00"
-              required
-            />
-            <span className="text-sm text-gray-500 mt-1">so'm</span>
-          </div>
-
-          <div className="bg-white rounded-lg p-4">
-            <label className="block text-sm text-gray-500">Elatma</label>
-            <Input
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              placeholder="Iphone 14 Pro, boshlangi'ch to'lovi bor"
-            />
-          </div>
-
-          <div className="bg-white rounded-lg p-4">
-            <label className="block text-sm text-gray-500 mb-2">
-              Rasm biriktirish
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {imageUrls.map((url, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={url}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(index)}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            {imageUrls.length < 2 && (
-              <>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                  id="image-upload"
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm text-gray-500 mb-1">Sana</div>
+              {isEditing ? (
+                <Input
+                  type="date"
+                  value={editedDebt?.debt_date || dayjs().format("YYYY-MM-DD")}
+                  onChange={(e) =>
+                    setEditedDebt((prev) => ({
+                      ...prev!,
+                      debt_date: e.target.value,
+                    }))
+                  }
                 />
-                <label
-                  htmlFor="image-upload"
-                  className="mt-2 block w-full py-2 text-center text-blue-600 cursor-pointer"
-                >
-                  + Rasm qo'shish
-                </label>
-              </>
+              ) : (
+                <div className="text-base">
+                  {dayjs(debt?.debt_date).format("DD.MM.YYYY")}
+                </div>
+              )}
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm text-gray-500 mb-1">Soat</div>
+              <div className="text-base">{debt?.debt_time}</div>
+            </div>
+          </div>
+
+          {/* Period */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="text-sm text-gray-500 mb-1">Muddat</div>
+            {isEditing ? (
+              <Select
+                value={editedDebt?.debt_period?.toString()}
+                onValueChange={(value) =>
+                  setEditedDebt((prev) => ({
+                    ...prev!,
+                    debt_period: Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Oyni tanlang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                    <SelectItem key={month} value={month.toString()}>
+                      {month} oy
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="text-base">{debt?.debt_period} oy</div>
             )}
           </div>
 
-          <div className="flex justify-end gap-4 sticky bottom-0 bg-gray-50 py-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditing(false)}
-              disabled={isLoading}
-            >
-              Bekor qilish
-            </Button>
-            <Button
-              type="submit"
-              className="bg-blue-600 text-white"
-              disabled={isLoading}
-            >
-              Saqlash
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex-1 p-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-4">
-              <div className="text-sm text-gray-500">Sana</div>
-              <div className="font-medium">
-                {format(new Date(date), "dd.MM.yyyy")}
+          {/* Amount */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="text-sm text-gray-500 mb-1">Summa miqdori</div>
+            {isEditing ? (
+              <Input
+                type="number"
+                value={editedDebt?.debt_sum}
+                onChange={(e) =>
+                  setEditedDebt((prev) => ({
+                    ...prev!,
+                    debt_sum: e.target.value,
+                  }))
+                }
+              />
+            ) : (
+              <div className="text-base text-blue-600">
+                {formatUZCurrency(Number(debt?.debt_sum))} so'm
               </div>
-            </div>
-            <div className="bg-white rounded-lg p-4">
-              <div className="text-sm text-gray-500">Soat</div>
-              <div className="font-medium">{formData.debt_time}</div>
-            </div>
+            )}
           </div>
 
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-sm text-gray-500">Muddat</div>
-            <div className="font-medium">{formData.debt_period} oy</div>
+          {/* Description */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="text-sm text-gray-500 mb-1">Eslatma</div>
+            {isEditing ? (
+              <Input
+                value={editedDebt?.description}
+                onChange={(e) =>
+                  setEditedDebt((prev) => ({
+                    ...prev!,
+                    description: e.target.value,
+                  }))
+                }
+              />
+            ) : (
+              <div className="text-base">{debt?.description || "-"}</div>
+            )}
           </div>
 
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-sm text-gray-500">Summa miqdori</div>
-            <div className="font-medium">
-              {parseFloat(formData.debt_sum).toLocaleString()} so'm
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-4">
-            <div className="text-sm text-gray-500">Elatma</div>
-            <div className="font-medium">{formData.description}</div>
-          </div>
-
-          {imageUrls.length > 0 && (
-            <div className="bg-white rounded-lg p-4">
-              <div className="text-sm text-gray-500 mb-2">Rasmlar</div>
-              <div className="grid grid-cols-2 gap-2">
-                {imageUrls.map((url, index) => (
+          {/* Images */}
+          {debt?.images && debt.images.length > 0 && (
+            <div>
+              <div className="text-sm text-gray-500 mb-2">Rasm biriktirish</div>
+              <div className="grid grid-cols-2 gap-4">
+                {debt.images.map((image, index) => (
                   <img
                     key={index}
-                    src={url}
-                    alt={`Image ${index + 1}`}
+                    src={image}
+                    alt={`Rasm ${index + 1}`}
                     className="w-full h-32 object-cover rounded-lg"
                   />
                 ))}
               </div>
             </div>
           )}
-
-          <Button
-            onClick={() => setIsEditing(true)}
-            className="w-full bg-blue-600 text-white py-4 rounded-lg"
-          >
-            Tahrirlash
-          </Button>
         </div>
-      )}
+
+        {/* Action Button */}
+        {!isEditing && (
+          <Button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-6 mb-4"
+            onClick={() => setIsEditing(true)}
+          >
+            Nasiyani so'ndirish
+          </Button>
+        )}
+
+        {/* Edit Actions */}
+        {isEditing && (
+          <div className="flex space-x-4 mt-6 mb-4">
+            <Button
+              onClick={() => {
+                setEditedDebt(debt);
+                setIsEditing(false);
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Bekor qilish
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Saqlash
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
