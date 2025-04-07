@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Wifi, WifiOff, Battery, BatteryMedium, BatteryLow } from 'lucide-react';
 import { useNetwork } from '@/context/NetworkContext';
@@ -8,6 +7,7 @@ const StatusBar = () => {
   const [time, setTime] = useState(new Date());
   const [batteryLevel, setBatteryLevel] = useState(100);
 
+  // Soatni yangilab turish
   useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date());
@@ -16,12 +16,35 @@ const StatusBar = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Real batareya darajasini olish
   useEffect(() => {
-    
-    setBatteryLevel(Math.floor(Math.random() * 40) + 60);
+    const getBatteryInfo = async () => {
+      const nav: any = navigator as any;
+
+      if ('getBattery' in nav) {
+        const battery = await nav.getBattery();
+
+        const updateBatteryLevel = () => {
+          setBatteryLevel(Math.floor(battery.level * 100));
+        };
+
+        updateBatteryLevel(); // dastlabki holat
+        battery.addEventListener('levelchange', updateBatteryLevel);
+
+        // cleanup
+        return () => {
+          battery.removeEventListener('levelchange', updateBatteryLevel);
+        };
+      }
+    };
+
+    getBatteryInfo();
   }, []);
 
-  const formattedTime = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedTime = time.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
     <div className="status-bar">
@@ -32,7 +55,7 @@ const StatusBar = () => {
         ) : (
           <WifiOff size={16} className="text-app-gray" />
         )}
-        
+
         <div className="flex items-center gap-1">
           {batteryLevel > 80 ? (
             <Battery size={18} className="text-app-green" />
