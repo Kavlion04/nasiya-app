@@ -51,6 +51,14 @@ interface Debtor {
   images: string[];
   total_debt?: number;
 }
+interface Debt {
+  id: string;
+  debt_date: string;
+  debt_time: string;
+  debt_period: number;
+  debt_sum: number;
+  description: string;
+}
 
 const Debtors = () => {
   const isMobile = useIsMobile();
@@ -59,6 +67,7 @@ const Debtors = () => {
   const [clientDebts, setClientDebts] = useState<{ [key: string]: Debt[] }>({});
   const [debtors, setDebtors] = useState<Debtor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const navigate = useNavigate();
 
   const { data: clientsData, isLoading: isClientsLoading } = useQuery({
@@ -69,6 +78,10 @@ const Debtors = () => {
         const response = await axios.get(`${API_URL}/debtor`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
+          },
+          params: {
+            skip: 0,
+            take: 100,
           },
         });
         return response.data;
@@ -84,7 +97,6 @@ const Debtors = () => {
   const fetchDebtorsWithTotalDebt = async () => {
     try {
       const accessToken = localStorage.getItem("accessToken");
-      // Mijozlarni olish
       const debtorsResponse = await axios.get(`${API_URL}/debtor`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -95,7 +107,6 @@ const Debtors = () => {
         },
       });
 
-      // Har bir mijoz uchun nasiyalar summasini olish
       const debtorsWithTotal = await Promise.all(
         debtorsResponse.data.data.map(async (debtor: Debtor) => {
           try {
@@ -110,7 +121,6 @@ const Debtors = () => {
               },
             });
 
-            // Mijozning barcha nasiyalari summasini hisoblash
             const totalDebt = debtsResponse.data.data.reduce(
               (sum: number, debt: any) => sum + Number(debt.debt_sum),
               0
@@ -191,9 +201,8 @@ const Debtors = () => {
 
   return (
     <div
-      className={`flex flex-col h-full bg-gray-50 ${
-        !isMobile ? "w-full max-w-none" : ""
-      }`}
+      className={`flex flex-col h-full bg-gray-50 ${!isMobile ? "w-full max-w-none" : ""
+        }`}
     >
       <div className="p-4 bg-white border-b flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -288,7 +297,9 @@ const Debtors = () => {
                           </p>
                           {client.total_debt > 0 && (
                             <p className="text-sm text-purple-600 font-medium mt-1">
-                              To'lanmagan: {formatUZCurrency(client.total_debt)}{" "}
+                              To'lanmagan: {formatUZCurrency(
+                                debts.reduce((sum, debt) => sum + Number(debt.debt_sum), 0)
+                              )}{" "}
                               so'm
                             </p>
                           )}
@@ -303,7 +314,7 @@ const Debtors = () => {
         )}
       </div>
 
-      <div className="fixed bottom-20 right-20">
+      <div className="fixed bottom-40 right-20">
         <Link
           to="/debtors/add"
           className="w-48 h-14 bg-app-blue rounded-full flex items-center justify-center text-white shadow-lg"

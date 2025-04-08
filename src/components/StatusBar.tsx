@@ -28,10 +28,9 @@ const StatusBar = () => {
           setBatteryLevel(Math.floor(battery.level * 100));
         };
 
-        updateBatteryLevel(); // dastlabki holat
+        updateBatteryLevel(); 
         battery.addEventListener('levelchange', updateBatteryLevel);
 
-        // cleanup
         return () => {
           battery.removeEventListener('levelchange', updateBatteryLevel);
         };

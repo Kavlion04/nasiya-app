@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { XCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import logo from '../assets/LOGO.svg';
 
 const PinScreen = () => {
   const { verifyPin, pinAttempts, blockUntil } = useAuth();
@@ -65,8 +66,8 @@ const PinScreen = () => {
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10">
-        <div className="w-16 h-16 bg-app-blue rounded-full flex items-center justify-center mb-8">
-          <span className="text-white text-2xl font-bold">D</span>
+        <div className=" rounded-full flex items-center justify-center mb-8">
+          <span className="text-white text-2xl font-bold"><img src={logo} alt="" /></span>
         </div>
         <h1 className="text-xl font-bold mb-2">PIN-kodni kiriting</h1>
         

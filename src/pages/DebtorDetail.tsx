@@ -168,7 +168,6 @@ const DebtorDetail = () => {
       </div>
 
       <div className="flex-1 p-4">
-        {/* Total Debt Card */}
         <div className="bg-blue-100 rounded-xl p-4 mb-4">
           <div className="text-sm text-gray-600">Umumiy nasiya:</div>
           <div className="text-xl font-semibold">
@@ -179,7 +178,6 @@ const DebtorDetail = () => {
           </div>
         </div>
 
-        {/* Debts List */}
         <div>
           <h2 className="text-base font-medium mb-3">Nasiyalar</h2>
           <div className="space-y-3">
@@ -215,13 +213,12 @@ const DebtorDetail = () => {
 
       <button
         onClick={() => navigate(`/debtors/${id}/add-debt`)}
-        className="fixed bottom-20 right-4 bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center space-x-2"
+        className="fixed bottom-40 right-20 bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center space-x-2"
       >
         <Plus size={20} />
         <span>Qo'shish</span>
       </button>
 
-      {/* Bottom Navigation */}
       {isMobile && (
         <div className="grid grid-cols-4 border-t border-gray-200 bg-white mt-16">
           <Link

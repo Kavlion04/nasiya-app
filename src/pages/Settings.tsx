@@ -25,7 +25,7 @@ const Settings = () => {
             <h2 className="text-app-blue font-medium text-sm">Asosiy</h2>
             <Link to="/profile" className="block glass-card">
               <div className="settings-item">
-                <div className="flex items-center">
+                <div className="flex items-center ml-3">
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                     <UserCircle size={18} className="text-app-blue" />
                   </div>
@@ -36,7 +36,7 @@ const Settings = () => {
             </Link>
             <div className="glass-card">
               <div className="settings-item">
-                <div className="flex items-center">
+                <div className="flex items-center ml-3">
                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
                     <CircleDollarSign size={18} className="text-green-600" />
                   </div>
@@ -48,17 +48,19 @@ const Settings = () => {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-app-blue font-medium text-sm">Bildirishnomalar</h2>
+            <h2 className="text-app-blue font-medium text-sm">Boshqa</h2>
             <div className="glass-card">
-              <div className="settings-item">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                    <BellRing size={18} className="text-purple-600" />
+              <Link to="/program" className="block glass-card">
+                <div className="settings-item">
+                  <div className="flex items-center ml-3">
+                    <div className="w-8 h-8 bg-app-blue rounded-full flex items-center justify-center mr-3">
+                      <SettingsIcon size={18} className="text-white" />
+                    </div>
+                    <span>Dastur haqida</span>
                   </div>
-                  <span>Bildirishnomalar</span>
+                  <ChevronRight size={16} className="text-gray-400" />
                 </div>
-                <ChevronRight size={16} className="text-gray-400" />
-              </div>
+              </Link>
             </div>
           </div>
 
@@ -67,7 +69,7 @@ const Settings = () => {
             <div className="glass-card">
               <Link to="/helpful" className="block glass-card">
                 <div className="settings-item">
-                  <div className="flex items-center">
+                  <div className="flex items-center ml-3">
                     <div className="w-8 h-8 bg-yellow-700 rounded-full flex items-center justify-center mr-3">
                       <HelpCircle size={18} className="text-white" />
                     </div>
@@ -78,7 +80,7 @@ const Settings = () => {
               </Link>
               <Link to="/complaint" className="block glass-card">
                 <div className="settings-item">
-                  <div className="flex items-center">
+                  <div className="flex items-center ml-3">
                     <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
                       <HelpCircle size={18} className="text-yellow-300" />
                     </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import logo from '../assets/LOGO.svg'
 
 const LoginScreen = () => {
   const { login } = useAuth();
@@ -44,8 +45,8 @@ const LoginScreen = () => {
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-app-blue rounded-full flex items-center justify-center mb-4">
-              <span className="text-white text-2xl font-bold">D</span>
+            <div className="  rounded-full flex items-center justify-center mb-4">
+              <span className="text-white text-2xl font-bold"><img src={logo} alt="" /></span>
             </div>
             <h1 className="text-xl font-bold">Dasturga kirish</h1>
             <p className="text-gray-500 text-sm text-center mt-1">

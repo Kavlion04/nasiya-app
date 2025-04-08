@@ -25,6 +25,7 @@ import PinScreen from "./components/PinScreen";
 import LoginScreen from "./components/LoginScreen";
 import NetworkError from "./components/NetworkError";
 import AddDebt from "./pages/AddDebt";
+import Program from "./pages/Program";
 
 const queryClient = new QueryClient();
 
@@ -159,6 +160,7 @@ const AppContent = () => {
                 </ProtectedRoute>
               }
             />
+            <Route path="/program" element={<ProtectedRoute><Program /> </ProtectedRoute>} />
             <Route
               path="/debtors/create"
               element={
@@ -276,6 +278,7 @@ const AppContent = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/program" element={<ProtectedRoute><Program /> </ProtectedRoute>} />
               <Route
                 path="/debtors/create"
                 element={

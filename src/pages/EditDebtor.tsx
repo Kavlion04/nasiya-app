@@ -87,7 +87,6 @@ const EditDebtor = () => {
       setIsLoading(true);
       const accessToken = localStorage.getItem("accessToken");
 
-      // Filter out empty phone numbers
       const dataToSend = {
         ...formData,
         phone_numbers: formData.phone_numbers.filter(

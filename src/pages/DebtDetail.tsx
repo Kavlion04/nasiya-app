@@ -52,7 +52,6 @@ const DebtDetail = () => {
 
       const debtData = response.data;
       if (debtData) {
-        // Format date and time
         const date = dayjs(debtData.debt_date);
         debtData.debt_date = date.isValid()
           ? date.format("YYYY-MM-DD")
@@ -63,10 +62,8 @@ const DebtDetail = () => {
           ? time.format("HH:mm")
           : dayjs().format("HH:mm");
 
-        // Ensure debt_period is a number
         debtData.debt_period = Number(debtData.debt_period) || 1;
 
-        // Format debt_sum
         debtData.debt_sum = debtData.debt_sum || "0";
       }
 
@@ -162,7 +159,6 @@ const DebtDetail = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
@@ -196,10 +192,8 @@ const DebtDetail = () => {
         </DropdownMenu>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 px-4">
         <div className="space-y-6">
-          {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="text-sm text-gray-500 mb-1">Sana</div>
