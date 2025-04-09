@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Battery, BatteryMedium, BatteryLow } from 'lucide-react';
+import {
+  Wifi,
+  WifiOff,
+  Battery,
+  BatteryMedium,
+  BatteryLow,
+  BatteryCharging,
+} from 'lucide-react';
 import { useNetwork } from '@/context/NetworkContext';
 
 const StatusBar = () => {
   const { isOnline } = useNetwork();
   const [time, setTime] = useState(new Date());
   const [batteryLevel, setBatteryLevel] = useState(100);
+  const [isCharging, setIsCharging] = useState(false);
 
   // Soatni yangilab turish
   useEffect(() => {
@@ -16,7 +24,7 @@ const StatusBar = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Real batareya darajasini olish
+  // Real batareya darajasini olish va zaryad holatini tekshirish
   useEffect(() => {
     const getBatteryInfo = async () => {
       const nav: any = navigator as any;
@@ -24,15 +32,18 @@ const StatusBar = () => {
       if ('getBattery' in nav) {
         const battery = await nav.getBattery();
 
-        const updateBatteryLevel = () => {
+        const updateBatteryInfo = () => {
           setBatteryLevel(Math.floor(battery.level * 100));
+          setIsCharging(battery.charging);
         };
 
-        updateBatteryLevel(); 
-        battery.addEventListener('levelchange', updateBatteryLevel);
+        updateBatteryInfo();
+        battery.addEventListener('levelchange', updateBatteryInfo);
+        battery.addEventListener('chargingchange', updateBatteryInfo);
 
         return () => {
-          battery.removeEventListener('levelchange', updateBatteryLevel);
+          battery.removeEventListener('levelchange', updateBatteryInfo);
+          battery.removeEventListener('chargingchange', updateBatteryInfo);
         };
       }
     };
@@ -56,7 +67,9 @@ const StatusBar = () => {
         )}
 
         <div className="flex items-center gap-1">
-          {batteryLevel > 80 ? (
+          {isCharging ? (
+            <BatteryCharging size={18} className="text-app-green" />
+          ) : batteryLevel > 80 ? (
             <Battery size={18} className="text-app-green" />
           ) : batteryLevel > 30 ? (
             <BatteryMedium size={18} className="text-app-green" />

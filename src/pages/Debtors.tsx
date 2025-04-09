@@ -292,7 +292,7 @@ const Debtors = () => {
                             </p>
                           )}
                           <p className="text-sm text-gray-500 mt-1">
-                            Nasiya: {formatUZCurrency(client.total_debt || 0)}{" "}
+                            Nasiya: {formatUZCurrency(Debtors[client.id] || 0)}{" "}
                             so'm
                           </p>
                           {client.total_debt > 0 && (
