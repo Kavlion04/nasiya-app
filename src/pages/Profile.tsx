@@ -4,10 +4,10 @@ import { ArrowLeft, User, Camera, Phone, Mail, CheckCircle2 } from 'lucide-react
 
 const Profile = () => {
   const [userData, setUserData] = useState({
-    username: 'Technochat',
-    phone: '+998 93 123 45 67',
-    email: 'technochat@gmail.com',
-    avatar: null,
+    username: 'Amirbek',
+    phone: '+998 91 801 77 15',
+    email: 'kavlion06@gmail.com',
+    avatar: null ,
   });
 
   useEffect(() => {
